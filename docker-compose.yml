@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # MongoDB - Banco de dados
   mongodb:
     build:
       context: ./mongodb
@@ -21,7 +20,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # RabbitMQ - Sistema de Mensageria
   rabbitmq:
     build:
       context: ./rabbitmq
@@ -31,8 +29,8 @@ services:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: password123
     ports:
-      - "5672:5672"   # AMQP
-      - "15672:15672" # Management UI
+      - "5672:5672"
+      - "15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -41,7 +39,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Backend API - Replica 1
   backend1:
     build:
       context: ./backend
@@ -66,7 +63,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Backend API - Replica 2
   backend2:
     build:
       context: ./backend
@@ -91,7 +87,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Backend API - Replica 3
   backend3:
     build:
       context: ./backend
@@ -116,7 +111,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Event Consumer - Processa eventos de corrida via RabbitMQ
   event-consumer:
     build:
       context: ./event-consumer
@@ -131,7 +125,6 @@ services:
       rabbitmq:
         condition: service_healthy
 
-  # API Gateway - Rate Limit e Load Balancer
   gateway:
     build:
       context: ./gateway

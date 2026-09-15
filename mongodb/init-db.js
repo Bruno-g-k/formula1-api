@@ -1,7 +1,5 @@
-// Inicialização de dados padrão do MongoDB
 db = db.getSiblingDB("formula1");
 
-// Inserir equipes
 db.teams.insertMany([
   {
     name: "Red Bull Racing",
@@ -29,7 +27,6 @@ db.teams.insertMany([
   }
 ]);
 
-// Inserir pilotos
 db.pilots.insertMany([
   {
     name: "Max Verstappen",
@@ -81,7 +78,6 @@ db.pilots.insertMany([
   }
 ]);
 
-// Inserir corridas iniciais
 db.races.insertMany([
   {
     name: "Bahrain Grand Prix",
@@ -106,4 +102,4 @@ db.races.insertMany([
   }
 ]);
 
-print("✅ Dados iniciais inseridos com sucesso!");
+print("Dados iniciais inseridos com sucesso!");

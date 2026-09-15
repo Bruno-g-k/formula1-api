@@ -9,39 +9,31 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const INSTANCE_ID = process.env.INSTANCE_ID || 'backend-1';
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Variável global para conexão com RabbitMQ
 let channel;
 
-// Conexão com MongoDB
 mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log(`[${INSTANCE_ID}] ✅ Conectado ao MongoDB`))
-.catch(err => console.error(`[${INSTANCE_ID}] ❌ Erro MongoDB:`, err));
+  .then(() => console.log(`[${INSTANCE_ID}] Conectado ao MongoDB`))
+  .catch(err => console.error(`[${INSTANCE_ID}] Erro MongoDB:`, err));
 
-// Inicializar RabbitMQ
 async function initRabbitMQ() {
   try {
     const connection = await amqp.connect(process.env.RABBITMQ_URI);
     channel = await connection.createChannel();
     
-    // Declarar exchanges
     await channel.assertExchange('f1-events', 'topic', { durable: true });
-    
-    // Declarar filas
     await channel.assertQueue('race-events', { durable: true });
     await channel.assertQueue('pilot-updates', { durable: true });
     
-    console.log(`[${INSTANCE_ID}] ✅ Conectado ao RabbitMQ`);
+    console.log(`[${INSTANCE_ID}] Conectado ao RabbitMQ`);
   } catch (error) {
-    console.error(`[${INSTANCE_ID}] ❌ Erro RabbitMQ:`, error);
-    setTimeout(initRabbitMQ, 5000); // Tentar reconectar
+    console.error(`[${INSTANCE_ID}] Erro RabbitMQ:`, error);
+    setTimeout(initRabbitMQ, 5000);
   }
 }
 
-// Função para publicar eventos
 async function publishEvent(routingKey, message) {
   if (channel) {
     try {
@@ -57,13 +49,9 @@ async function publishEvent(routingKey, message) {
   }
 }
 
-// Exportar para uso em rotas
 app.locals.publishEvent = publishEvent;
 app.locals.instanceId = INSTANCE_ID;
 
-// ============= MODELS =============
-
-// Schema de Piloto
 const pilotSchema = new mongoose.Schema({
   name: { type: String, required: true },
   number: { type: Number, required: true, unique: true },
@@ -73,7 +61,6 @@ const pilotSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Schema de Equipe
 const teamSchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
   country: String,
@@ -81,7 +68,6 @@ const teamSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Schema de Corrida
 const raceSchema = new mongoose.Schema({
   name: { type: String, required: true },
   circuit: String,
@@ -95,9 +81,6 @@ const Pilot = mongoose.model('Pilot', pilotSchema);
 const Team = mongoose.model('Team', teamSchema);
 const Race = mongoose.model('Race', raceSchema);
 
-// ============= ROTAS =============
-
-// Health Check
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
@@ -107,9 +90,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ===== PILOTOS =====
-
-// GET todos os pilotos
 app.get('/api/pilots', async (req, res) => {
   try {
     const pilots = await Pilot.find().sort({ number: 1 });
@@ -123,7 +103,6 @@ app.get('/api/pilots', async (req, res) => {
   }
 });
 
-// GET piloto por ID
 app.get('/api/pilots/:id', async (req, res) => {
   try {
     const pilot = await Pilot.findById(req.params.id);
@@ -137,13 +116,11 @@ app.get('/api/pilots/:id', async (req, res) => {
   }
 });
 
-// POST criar piloto
 app.post('/api/pilots', async (req, res) => {
   try {
     const pilot = new Pilot(req.body);
     await pilot.save();
     
-    // Publicar evento
     await publishEvent('pilot.created', {
       pilotId: pilot._id,
       name: pilot.name,
@@ -160,17 +137,15 @@ app.post('/api/pilots', async (req, res) => {
   }
 });
 
-// PUT atualizar piloto
 app.put('/api/pilots/:id', async (req, res) => {
   try {
     const pilot = await Pilot.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      { ...req.body },
       { new: true }
     );
     if (!pilot) return res.status(404).json({ error: 'Piloto não encontrado' });
     
-    // Publicar evento
     await publishEvent('pilot.updated', {
       pilotId: pilot._id,
       name: pilot.name,
@@ -187,13 +162,11 @@ app.put('/api/pilots/:id', async (req, res) => {
   }
 });
 
-// DELETE piloto
 app.delete('/api/pilots/:id', async (req, res) => {
   try {
     const pilot = await Pilot.findByIdAndDelete(req.params.id);
     if (!pilot) return res.status(404).json({ error: 'Piloto não encontrado' });
     
-    // Publicar evento
     await publishEvent('pilot.deleted', {
       pilotId: pilot._id,
       name: pilot.name,
@@ -206,9 +179,6 @@ app.delete('/api/pilots/:id', async (req, res) => {
   }
 });
 
-// ===== EQUIPES =====
-
-// GET todas as equipes
 app.get('/api/teams', async (req, res) => {
   try {
     const teams = await Team.find().sort({ points: -1 });
@@ -221,7 +191,6 @@ app.get('/api/teams', async (req, res) => {
   }
 });
 
-// POST criar equipe
 app.post('/api/teams', async (req, res) => {
   try {
     const team = new Team(req.body);
@@ -242,7 +211,6 @@ app.post('/api/teams', async (req, res) => {
   }
 });
 
-// GET equipe por ID
 app.get('/api/teams/:id', async (req, res) => {
   try {
     const team = await Team.findById(req.params.id);
@@ -256,12 +224,11 @@ app.get('/api/teams/:id', async (req, res) => {
   }
 });
 
-// PUT atualizar equipe
 app.put('/api/teams/:id', async (req, res) => {
   try {
     const team = await Team.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      { ...req.body },
       { new: true }
     );
     if (!team) return res.status(404).json({ error: 'Equipe não encontrada' });
@@ -282,7 +249,6 @@ app.put('/api/teams/:id', async (req, res) => {
   }
 });
 
-// DELETE equipe
 app.delete('/api/teams/:id', async (req, res) => {
   try {
     const team = await Team.findByIdAndDelete(req.params.id);
@@ -300,9 +266,6 @@ app.delete('/api/teams/:id', async (req, res) => {
   }
 });
 
-// ===== CORRIDAS =====
-
-// GET todas as corridas
 app.get('/api/races', async (req, res) => {
   try {
     const races = await Race.find().sort({ date: -1 });
@@ -315,7 +278,6 @@ app.get('/api/races', async (req, res) => {
   }
 });
 
-// POST criar corrida
 app.post('/api/races', async (req, res) => {
   try {
     const race = new Race(req.body);
@@ -338,7 +300,6 @@ app.post('/api/races', async (req, res) => {
   }
 });
 
-// PUT finalizar corrida e registrar vencedor
 app.put('/api/races/:id/finish', async (req, res) => {
   try {
     const { winnerId, winnerName } = req.body;
@@ -351,13 +312,11 @@ app.put('/api/races/:id/finish', async (req, res) => {
     
     if (!race) return res.status(404).json({ error: 'Corrida não encontrada' });
     
-    // Atualizar pontos do piloto
     await Pilot.findByIdAndUpdate(
       winnerId,
       { $inc: { points: 25, wins: 1 } }
     );
     
-    // Publicar evento de corrida finalizada
     await publishEvent('race.finished', {
       raceId: race._id,
       raceName: race.name,
@@ -376,11 +335,10 @@ app.put('/api/races/:id/finish', async (req, res) => {
   }
 });
 
-// Iniciar servidor
 initRabbitMQ();
 
 app.listen(PORT, () => {
-  console.log(`[${INSTANCE_ID}] 🚀 Servidor rodando em http://0.0.0.0:${PORT}`);
-  console.log(`[${INSTANCE_ID}] 📡 MongoDB: ${process.env.MONGO_URI}`);
-  console.log(`[${INSTANCE_ID}] 🐰 RabbitMQ: ${process.env.RABBITMQ_URI}`);
+  console.log(`[${INSTANCE_ID}] Servidor rodando em http://0.0.0.0:${PORT}`);
+  console.log(`[${INSTANCE_ID}] MongoDB: ${process.env.MONGO_URI}`);
+  console.log(`[${INSTANCE_ID}] RabbitMQ: ${process.env.RABBITMQ_URI}`);
 });
