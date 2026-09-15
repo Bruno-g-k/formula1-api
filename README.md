@@ -147,7 +147,33 @@ curl -X POST http://localhost:8080/api/pilots \
 
 PowerShell:
 ```powershell
-Invoke-RestMethod -Uri "http://localhost:8080/api/pilots" -Method Post -ContentType "application/json" -Body '{"name":"Ayrton Senna","number":12,"team":"McLaren"}'
+Invoke-RestMethod -Uri "http://localhost:8080/api/pilots" -Method Post -ContentType "application/json" -Body '{"name":"Ayrton Senna","number":14,"team":"McLaren"}'
+```
+
+#### Atualizar piloto
+
+Git Bash:
+```bash
+curl -X PUT http://localhost:8080/api/pilots/6aa9d14b2aeffec0179df8a7 \
+  -H "Content-Type: application/json" \
+  -d '{"number":2}'
+```
+
+PowerShell:
+```powershell
+Invoke-RestMethod -Uri "http://localhost:8080/api/pilots/6aa9d14b2aeffec0179df8a7" -Method Put -ContentType "application/json" -Body '{"number":2}'
+```
+
+#### Remover piloto
+
+Git Bash:
+```bash
+curl -X DELETE http://localhost:8080/api/pilots/6aa9d14b2aeffec0179df8a7
+```
+
+PowerShell:
+```powershell
+Invoke-RestMethod -Uri "http://localhost:8080/api/pilots/6aa9d14b2aeffec0179df8a7" -Method Delete
 ```
 
 #### Listar equipes
@@ -174,6 +200,32 @@ curl -X POST http://localhost:8080/api/teams \
 PowerShell:
 ```powershell
 Invoke-RestMethod -Uri "http://localhost:8080/api/teams" -Method Post -ContentType "application/json" -Body '{"name":"Williams","country":"United Kingdom"}'
+```
+
+#### Atualizar equipe
+
+Git Bash:
+```bash
+curl -X PUT http://localhost:8080/api/teams/6aa9d70cd0083e3d9740eaf7 \
+  -H "Content-Type: application/json" \
+  -d '{"points":20}'
+```
+
+PowerShell:
+```powershell
+Invoke-RestMethod -Uri "http://localhost:8080/api/teams/6aa9d70cd0083e3d9740eaf7" -Method Put -ContentType "application/json" -Body '{"points":10}'
+```
+
+#### Remover equipe
+
+Git Bash:
+```bash
+curl -X DELETE http://localhost:8080/api/teams/6aa9d70cd0083e3d9740eaf7
+```
+
+PowerShell:
+```powershell
+Invoke-RestMethod -Uri "http://localhost:8080/api/teams/6aa9d70cd0083e3d9740eaf7" -Method Delete
 ```
 
 #### Listar corridas

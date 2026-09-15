@@ -18,7 +18,6 @@ let channel;
 const rateLimitMap = new Map();
 
 app.use(cors());
-app.use(express.json());
 
 async function healthCheck() {
   for (const upstream of UPSTREAMS) {
