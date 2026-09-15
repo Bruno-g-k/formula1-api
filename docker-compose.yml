@@ -1,0 +1,170 @@
+version: '3.8'
+
+services:
+  # MongoDB - Banco de dados
+  mongodb:
+    build:
+      context: ./mongodb
+      dockerfile: Dockerfile
+    container_name: formula1-db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: formula1
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ - Sistema de Mensageria
+  rabbitmq:
+    build:
+      context: ./rabbitmq
+      dockerfile: Dockerfile
+    container_name: formula1-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: password123
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backend API - Replica 1
+  backend1:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: formula1-backend-1
+    environment:
+      NODE_ENV: production
+      MONGO_URI: mongodb://admin:password123@mongodb:27017/formula1?authSource=admin
+      RABBITMQ_URI: amqp://admin:password123@rabbitmq:5672
+      PORT: 3001
+      INSTANCE_ID: backend-1
+    ports:
+      - "3001:3001"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: curl -f http://localhost:3001/health || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backend API - Replica 2
+  backend2:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: formula1-backend-2
+    environment:
+      NODE_ENV: production
+      MONGO_URI: mongodb://admin:password123@mongodb:27017/formula1?authSource=admin
+      RABBITMQ_URI: amqp://admin:password123@rabbitmq:5672
+      PORT: 3002
+      INSTANCE_ID: backend-2
+    ports:
+      - "3002:3002"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: curl -f http://localhost:3002/health || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backend API - Replica 3
+  backend3:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: formula1-backend-3
+    environment:
+      NODE_ENV: production
+      MONGO_URI: mongodb://admin:password123@mongodb:27017/formula1?authSource=admin
+      RABBITMQ_URI: amqp://admin:password123@rabbitmq:5672
+      PORT: 3003
+      INSTANCE_ID: backend-3
+    ports:
+      - "3003:3003"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: curl -f http://localhost:3003/health || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Event Consumer - Processa eventos de corrida via RabbitMQ
+  event-consumer:
+    build:
+      context: ./event-consumer
+      dockerfile: Dockerfile
+    container_name: formula1-event-consumer
+    environment:
+      MONGO_URI: mongodb://admin:password123@mongodb:27017/formula1?authSource=admin
+      RABBITMQ_URI: amqp://admin:password123@rabbitmq:5672
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # API Gateway - Rate Limit e Load Balancer
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: formula1-gateway
+    environment:
+      NODE_ENV: production
+      GATEWAY_PORT: 8080
+      RABBITMQ_URI: amqp://admin:password123@rabbitmq:5672
+      UPSTREAMS: "http://backend1:3001,http://backend2:3002,http://backend3:3003"
+      RATE_LIMIT_REQUESTS: 20
+      RATE_LIMIT_WINDOW: 10
+    ports:
+      - "8080:8080"
+    depends_on:
+      backend1:
+        condition: service_healthy
+      backend2:
+        condition: service_healthy
+      backend3:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: curl -f http://localhost:8080/health || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongodb_data:
+  rabbitmq_data:
+
+networks:
+  default:
+    name: formula1-network
